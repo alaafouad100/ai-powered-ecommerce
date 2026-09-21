@@ -1,0 +1,34 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="card" style="margin-bottom: 40px;">
+    <span class="ai-badge">{{ product.category.name }}</span>
+    <h1 style="margin: 10px 0;">{{ product.name }}</h1>
+    <p style="font-size: 1.1rem; color: #475569; margin-bottom: 20px;">{{ product.description }}</p>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="color: #2563eb;">${{ product.price }}</h2>
+        <button class="btn add-to-cart-btn" data-product-id="{{ product.id }}" style="font-size: 1.1rem;">Add to Cart</button>
+    </div>
+</div>
+
+<h3>🤖 AI-Powered Recommendations (Similar Products)</h3>
+<div class="grid">
+    {% for rec in recommendations %}
+    <div class="card">
+        <div>
+            <div class="ai-badge">Similar Match</div>
+            <h4><a href="{% url 'product_detail' rec.product.id %}" style="text-decoration:none; color:inherit;">{{ rec.product.name }}</a></h4>
+            <div class="ai-box">
+                <small style="color:#1e40af; font-weight:600;">Why AI chose this:</small>
+                <p style="font-size: 0.85rem; color:#1e3a8a;">{{ rec.explanation }}</p>
+            </div>
+        </div>
+        <div style="margin-top: 15px; display:flex; justify-content:space-between; align-items:center;">
+            <strong>${{ rec.product.price }}</strong>
+            <button class="btn add-to-cart-btn" data-product-id="{{ rec.product.id }}">Add</button>
+        </div>
+    </div>
+    {% empty %}
+    <p>No recommendations available yet for this item.</p>
+    {% endfor %}
+</div>
+{% endblock %}

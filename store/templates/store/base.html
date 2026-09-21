@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI E-Commerce Store</title>
+    <style>
+        :root { --primary: #2563eb; --dark: #1e293b; --light: #f8fafc; --card: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--light); color: var(--dark); padding-bottom: 50px; }
+        nav { background: var(--dark); color: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        nav a { color: #fff; text-decoration: none; margin-left: 20px; font-weight: 500; }
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 25px; margin-top: 25px; }
+        .card { background: var(--card); border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
+        .btn { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; text-decoration: none; text-align: center; display: inline-block; font-weight: 500; }
+        .btn:hover { opacity: 0.9; }
+        .ai-badge { background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; width: fit-content; margin-bottom: 10px; }
+        .ai-box { background: #eff6ff; border-left: 4px solid var(--primary); padding: 15px; border-radius: 4px; margin-top: 15px; }
+
+        /* تنسيقات البانر الإعلاني المتحرك */
+        .banner-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .banner-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out;
+        }
+        .banner-slide.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .banner-content {
+            text-align: center;
+            color: #ffffff;
+            padding: 20px;
+            max-width: 600px;
+        }
+        .banner-content h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .banner-content p {
+            font-size: 1.05rem;
+            margin-bottom: 18px;
+            opacity: 0.95;
+        }
+        .banner-btn {
+            display: inline-block;
+            padding: 9px 22px;
+            background-color: #ffffff;
+            color: var(--dark);
+            border-radius: 20px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+        .banner-btn:hover {
+            background-color: #f1f5f9;
+        }
+        .banner-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border: none;
+            font-size: 18px;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .banner-nav:hover { background: rgba(0, 0, 0, 0.6); }
+        .banner-nav.prev { left: 15px; }
+        .banner-nav.next { right: 15px; }
+        .banner-dots {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .dot.active {
+            background-color: #ffffff;
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2><a href="{% url 'product_list' %}" style="margin:0;">TechStore AI</a></h2>
+        <div>
+            <a href="{% url 'product_list' %}">Products</a>
+            <a href="{% url 'cart_view' %}">Cart (<span id="cart-counter">{{ request.user.cart.items.count|default:0 }}</span>)</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'order_history' %}">My Orders</a>
+                <a href="{% url 'logout' %}">Logout ({{ user.username }})</a>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'register' %}">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        // إعداد السلة عبر الـ Event Delegation
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.add-to-cart-btn');
+            if (btn) {
+                const productId = btn.getAttribute('data-product-id');
+                fetch('/api/cart/add/' + productId + '/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(res => {
+                    if (res.redirected) { 
+                        window.location.href = '{% url "login" %}'; 
+                        return; 
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if(data && data.status === 'success') {
+                        document.getElementById('cart-counter').innerText = data.total_items;
+                        alert('Product added to cart successfully!');
+                    }
+                })
+                .catch(err => console.error(err));
+            }
+        });
+
+        // إعداد السلايدر التلقائي للبانر الإعلاني
+        let slideIndex = 0;
+        let slideInterval;
+
+        function showSlide(index) {
+            const slides = document.querySelectorAll('.banner-slide');
+            const dots = document.querySelectorAll('.dot');
+            if (slides.length === 0) return;
+
+            if (index >= slides.length) { slideIndex = 0; }
+            else if (index < 0) { slideIndex = slides.length - 1; }
+            else { slideIndex = index; }
+
+            slides.forEach(s => s.classList.remove('active'));
+            dots.forEach(d => d.classList.remove('active'));
+
+            slides[slideIndex].classList.add('active');
+            if (dots[slideIndex]) dots[slideIndex].classList.add('active');
+        }
+
+        function changeSlide(step) {
+            showSlide(slideIndex + step);
+            resetSlideTimer();
+        }
+
+        function setSlide(index) {
+            showSlide(index);
+            resetSlideTimer();
+        }
+
+        function startSlideTimer() {
+            slideInterval = setInterval(() => {
+                showSlide(slideIndex + 1);
+            }, 4000);
+        }
+
+        function resetSlideTimer() {
+            clearInterval(slideInterval);
+            startSlideTimer();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.banner-slide');
+            if (slides.length > 0) {
+                startSlideTimer();
+            }
+        });
+    </script>
+</body>
+</html>

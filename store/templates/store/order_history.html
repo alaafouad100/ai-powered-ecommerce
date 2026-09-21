@@ -1,0 +1,16 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<h2>Your Order History</h2>
+<div class="grid">
+    {% for order in orders %}
+    <div class="card">
+        <h3>Order #{{ order.id }}</h3>
+        <p>Status: <strong>{{ order.status }}</strong></p>
+        <p>Total: <strong>${{ order.total_price }}</strong></p>
+        <small style="color:#64748b;">Date: {{ order.created_at|date:"Y-m-d H:i" }}</small>
+    </div>
+    {% empty %}
+    <p>No past orders found.</p>
+    {% endfor %}
+</div>
+{% endblock %}
